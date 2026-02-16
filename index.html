@@ -567,9 +567,6 @@
 }
 
 </style>
-<link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#1e88e5">
-<link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 
 <body>
@@ -694,6 +691,21 @@
             <select id="modalSs"></select>
           </div>
         </div>
+
+        <div class="row">
+          <div class="field" style="min-width:220px;flex:2 1 220px;">
+            <label>量（任意）</label>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <label style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:13px;">
+                <input id="modalAmountEnable" type="checkbox" />
+                量も設定する
+              </label>
+              <input id="modalAmountInput" type="number" inputmode="numeric" min="0" step="1" placeholder="整数 (0以上)" style="flex:1 1 160px;min-width:160px;" />
+              <span class="unitBadge" id="modalAmountUnit">ml</span>
+            </div>
+          </div>
+        </div>
+
         <div class="rowMeta" id="modalTargetInfo"></div>
       </div>
       <div class="modalFooter">
@@ -829,6 +841,9 @@
         timeModalClose: $('timeModalClose'),
         modalMm: $('modalMm'),
         modalSs: $('modalSs'),
+        modalAmountEnable: $('modalAmountEnable'),
+        modalAmountInput: $('modalAmountInput'),
+        modalAmountUnit: $('modalAmountUnit'),
         modalTargetInfo: $('modalTargetInfo'),
         modalUnsetBtn: $('modalUnsetBtn'),
         modalCancelBtn: $('modalCancelBtn'),
@@ -1127,6 +1142,19 @@
         dom.modalMm.value = String(mmVal);
         dom.modalSs.value = String(ssVal);
 
+        // amount (optional in modal)
+        dom.modalAmountUnit.textContent = state.unit;
+        dom.modalAmountInput.classList.remove('inputInvalid');
+        if (s.amount != null){
+          dom.modalAmountEnable.checked = true;
+          dom.modalAmountInput.disabled = false;
+          dom.modalAmountInput.value = String(s.amount);
+        }else{
+          dom.modalAmountEnable.checked = false;
+          dom.modalAmountInput.disabled = true;
+          dom.modalAmountInput.value = '';
+        }
+
         const labelTime = (s.timeMs == null) ? '未設定' : msToMmSs(s.timeMs);
         const labelAmount = (s.amount == null) ? '量未設定' : `${s.amount}${state.unit}`;
         dom.modalTargetInfo.textContent = `対象：${labelTime} ／ ${labelAmount}`;
@@ -1199,12 +1227,34 @@
         const s = state.steps.find(x => x.id === state.modalStepId);
         if (!s) return;
 
+        // time
         if (mode === 'unset'){
           s.timeMs = null;
         }else{
           const mm = Number(dom.modalMm.value);
           const ss = Number(dom.modalSs.value);
           s.timeMs = mmssToMs(mm, ss);
+        }
+
+        // amount (optional in modal)
+        // - checkbox OFF: do not change amount
+        // - checkbox ON : apply input (empty => null)
+        if (mode !== 'unset' && dom.modalAmountEnable && dom.modalAmountEnable.checked){
+          const raw = (dom.modalAmountInput.value ?? '').trim();
+          dom.modalAmountInput.classList.remove('inputInvalid');
+
+          if (raw === ''){
+            s.amount = null;
+          }else{
+            const n = Number(raw);
+            const ok = Number.isFinite(n) && Number.isInteger(n) && n >= 0;
+            if (!ok){
+              dom.modalAmountInput.classList.add('inputInvalid');
+              showError('量は 0 以上の整数で入力してください（量は未入力でもOKです）。');
+              return; // keep modal open
+            }
+            s.amount = n;
+          }
         }
 
         sortStepsInPlace();
@@ -1426,7 +1476,7 @@
           timeBtn.dataset.time = '1';
 
           const timeText = (s.timeMs == null) ? '未設定' : msToMmSs(s.timeMs);
-          timeBtn.innerHTML = `<span class="main">${timeText}</span><span class="sub">タップして設定</span>`;
+          timeBtn.innerHTML = `<span class="main">${timeText}</span><span class="sub">タップして時間/量を設定</span>`;
           timeBtn.addEventListener('click', () => {
             if (state.running) return;
             openTimeModal(s.id);
@@ -1768,6 +1818,18 @@
         dom.modalMm.appendChild(buildOptions(0, 59));
         dom.modalSs.appendChild(buildOptions(0, 59));
 
+        // amount optional toggle in modal
+        dom.modalAmountEnable.addEventListener('change', () => {
+          const on = dom.modalAmountEnable.checked;
+          dom.modalAmountInput.disabled = !on;
+          dom.modalAmountInput.classList.remove('inputInvalid');
+          if (!on){
+            // keep value for convenience, but it won't be applied
+          }else{
+            dom.modalAmountInput.focus({ preventScroll:true });
+          }
+        });
+
         dom.timeModalBackdrop.addEventListener('click', () => closeTimeModal());
         dom.timeModalClose.addEventListener('click', () => closeTimeModal());
         dom.modalCancelBtn.addEventListener('click', () => closeTimeModal());
@@ -1798,15 +1860,5 @@
       init();
     })();
   </script>
-
-<script>
-  // PWA: Service Worker registration
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(()=>{ /* ignore */ });
-    });
-  }
-</script>
-
 </body>
 </html>
