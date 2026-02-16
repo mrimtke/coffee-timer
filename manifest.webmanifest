@@ -1,0 +1,22 @@
+{
+  "name": "珈琲用ストップウォッチ",
+  "short_name": "珈琲SW",
+  "description": "抽出ステップの時間と量を通知する珈琲用ストップウォッチ",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1e88e5",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
